@@ -8,7 +8,6 @@ import sem4.ea.ss25.battleship.assignment2.board_service.domain.Cell;
 import sem4.ea.ss25.battleship.assignment2.board_service.domain.Ship;
 import sem4.ea.ss25.battleship.assignment2.board_service.dto.BoardDTO;
 import sem4.ea.ss25.battleship.assignment2.board_service.dto.CellDTO;
-import sem4.ea.ss25.battleship.assignment2.board_service.dto.PlayerDTO;
 import sem4.ea.ss25.battleship.assignment2.board_service.dto.ShipDTO;
 import sem4.ea.ss25.battleship.assignment2.board_service.repository.BoardRepository;
 import sem4.ea.ss25.battleship.assignment2.board_service.repository.ShipRepository;
@@ -26,9 +25,7 @@ public class BoardService {
 	private ShipRepository shipRepository;
 
 	@Autowired
-	private PlayerServiceClient playerServiceClient;
-
-
+	private BoardMessageSender boardMessageSender;
 
 	@CircuitBreaker(name = "boardServiceCB", fallbackMethod = "createBoardFallback")
 	public BoardDTO createBoard() {
@@ -36,12 +33,16 @@ public class BoardService {
 		board.initializeBoard(10);
 		board = boardRepository.save(board);
 
-		return new BoardDTO(
+		BoardDTO boardDTO = new BoardDTO(
 				board.getId(),
 				board.getCells().stream()
 						.map(cell -> new CellDTO(cell.getX(), cell.getY(), cell.isHasShip(), cell.isHit()))
 						.collect(Collectors.toList())
 		);
+
+		boardMessageSender.sendBoardCreatedEvent(boardDTO);
+
+		return boardDTO;
 	}
 
 	private BoardDTO createBoardFallback(Exception ex) {
@@ -56,6 +57,8 @@ public class BoardService {
 		Ship ship = board.placeShip(length, x, y, isHorizontal);
 		board = boardRepository.save(board);
 		ship = shipRepository.save(ship);
+
+		boardMessageSender.sendShipPlacedEvent(boardId, playerId);
 
 		return new ShipDTO(ship.getId(), ship.getLength(), playerId);
 	}
@@ -79,8 +82,13 @@ public class BoardService {
 		cell.setHit(true);
 		boardRepository.save(board);
 
-		if (isHit) {
-			playerServiceClient.updateScore(playerId, true);
+		boardMessageSender.sendHitResultEvent(gameId, boardId, playerId, isHit);
+
+		// Check if all ships are hit
+		boolean allShipsHit = board.isAllShipsHit();
+		if (allShipsHit) {
+			// Send game over event
+			boardMessageSender.sendGameOverEvent(gameId, boardId, playerId);
 		}
 
 		return isHit ? "Hit!" : "Miss!";
@@ -93,10 +101,34 @@ public class BoardService {
 
 	@CircuitBreaker(name = "boardServiceCB", fallbackMethod = "endGameFallback")
 	public String endGame(Long boardId) {
+		Board board = boardRepository.findById(boardId)
+				.orElseThrow(() -> new RuntimeException("Board not found"));
+
+		// Mark all cells as hit for game end
+		board.getCells().forEach(cell -> cell.setHit(true));
+		boardRepository.save(board);
+
 		return "Game ended.";
 	}
 
 	private String endGameFallback(Long boardId, Exception ex) {
 		return "Game ended due to service unavailability";
+	}
+
+	@CircuitBreaker(name = "boardServiceCB", fallbackMethod = "getBoardFallback")
+	public BoardDTO getBoard(Long boardId) {
+		Board board = boardRepository.findById(boardId)
+				.orElseThrow(() -> new RuntimeException("Board not found"));
+
+		return new BoardDTO(
+				board.getId(),
+				board.getCells().stream()
+						.map(cell -> new CellDTO(cell.getX(), cell.getY(), cell.isHasShip(), cell.isHit()))
+						.collect(Collectors.toList())
+		);
+	}
+
+	private BoardDTO getBoardFallback(Long boardId, Exception ex) {
+		return new BoardDTO(-1L, List.of());
 	}
 }

@@ -7,20 +7,23 @@ import jakarta.persistence.Id;
 
 @Entity
 public class Player {
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	private String name;
 	private int score;
+	private int wins;
+	private int losses;
 
-
-	public Player() {}
+	public Player() {
+	}
 
 	public Player(String name) {
 		this.name = name;
-		this.score = 0; // Standardmäßig ist der Score 0
+		this.score = 0;
+		this.wins = 0;
+		this.losses = 0;
 	}
 
 	public Long getId() {
@@ -47,11 +50,33 @@ public class Player {
 		this.score = score;
 	}
 
+	public int getWins() {
+		return wins;
+	}
+
+	public void setWins(int wins) {
+		this.wins = wins;
+	}
+
+	public int getLosses() {
+		return losses;
+	}
+
+	public void setLosses(int losses) {
+		this.losses = losses;
+	}
+
 	public void updateScore(boolean isHit) {
 		if (isHit) {
-			this.score += 1;
-		} else {
-			this.score = Math.max(this.score - 1, 0);
+			this.score += 10;
 		}
+	}
+
+	public void incrementWins() {
+		this.wins++;
+	}
+
+	public void incrementLosses() {
+		this.losses++;
 	}
 }

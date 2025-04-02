@@ -1,33 +1,20 @@
 package sem4.ea.ss25.battleship.assignment2.board_service.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Ship {
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	private int length;
-	private int startX;
-	private int startY;
-	private boolean isHorizontal;
 
-	public Ship() {
-	}
+	@ManyToMany(fetch = FetchType.EAGER)
+	private List<Cell> cells = new ArrayList<>();
 
-	public Ship(int length, int startX, int startY, boolean isHorizontal) {
-		this.length = length;
-		this.startX = startX;
-		this.startY = startY;
-		this.isHorizontal = isHorizontal;
-	}
-
-	// Getter und Setter
 	public Long getId() {
 		return id;
 	}
@@ -44,27 +31,20 @@ public class Ship {
 		this.length = length;
 	}
 
-	public int getStartX() {
-		return startX;
+	public List<Cell> getCells() {
+		return cells;
 	}
 
-	public void setStartX(int startX) {
-		this.startX = startX;
+	public void setCells(List<Cell> cells) {
+		this.cells = cells;
 	}
 
-	public int getStartY() {
-		return startY;
-	}
-
-	public void setStartY(int startY) {
-		this.startY = startY;
-	}
-
-	public boolean isHorizontal() {
-		return isHorizontal;
-	}
-
-	public void setHorizontal(boolean horizontal) {
-		isHorizontal = horizontal;
+	public boolean isDestroyed() {
+		for (Cell cell : cells) {
+			if (!cell.isHit()) {
+				return false;
+			}
+		}
+		return true;
 	}
 }

@@ -1,11 +1,12 @@
 package sem4.ea.ss25.battleship.assignment2.board_service.domain;
 
-
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 
 @Entity
 public class Cell {
-
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -13,16 +14,7 @@ public class Cell {
 	private int x;
 	private int y;
 	private boolean hasShip;
-	private boolean isHit;
-
-	public Cell() {}
-
-	public Cell(int x, int y, boolean hasShip, boolean isHit) {
-		this.x = x;
-		this.y = y;
-		this.hasShip = hasShip;
-		this.isHit = isHit;
-	}
+	private boolean hit;
 
 	public Long getId() {
 		return id;
@@ -57,10 +49,10 @@ public class Cell {
 	}
 
 	public boolean isHit() {
-		return isHit;
+		return hit;
 	}
 
 	public void setHit(boolean hit) {
-		isHit = hit;
+		this.hit = hit;
 	}
 }
