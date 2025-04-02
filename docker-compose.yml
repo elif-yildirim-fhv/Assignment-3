@@ -1,15 +1,60 @@
 version: '3.8'
+
 services:
   rabbitmq:
     image: rabbitmq:3-management
-    container_name: rabbitmq
     ports:
       - "5672:5672"
       - "15672:15672"
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-volumes:
-  rabbitmq_data:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - battleship-network
+
+  eureka-server:
+    build: ./eureka_server
+    ports:
+      - "8761:8761"
+    networks:
+      - battleship-network
+
+  board-service:
+    build: ./board_service
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+      - eureka-server
+    networks:
+      - battleship-network
+
+  game-service:
+    build: ./game_service
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+      - eureka-server
+    networks:
+      - battleship-network
+
+  player-service:
+    build: ./player_service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+    depends_on:
+      - rabbitmq
+      - eureka-server
+    networks:
+      - battleship-network
+
+networks:
+  battleship-network:
+    driver: bridge
