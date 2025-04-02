@@ -9,10 +9,7 @@ import org.springframework.stereotype.Service;
 import sem4.ea.ss25.battleship.assignment2.game_service.client.BoardServiceClient;
 import sem4.ea.ss25.battleship.assignment2.game_service.client.PlayerServiceClient;
 import sem4.ea.ss25.battleship.assignment2.game_service.domain.Game;
-import sem4.ea.ss25.battleship.assignment2.game_service.dto.BoardDTO;
-import sem4.ea.ss25.battleship.assignment2.game_service.dto.CellDTO;
-import sem4.ea.ss25.battleship.assignment2.game_service.dto.GameDTO;
-import sem4.ea.ss25.battleship.assignment2.game_service.dto.PlayerDTO;
+import sem4.ea.ss25.battleship.assignment2.game_service.dto.*;
 import sem4.ea.ss25.battleship.assignment2.game_service.repository.GameRepository;
 
 import java.util.List;
@@ -30,19 +27,14 @@ public class GameService {
 	@Autowired
 	private GameRepository gameRepository;
 
-	@Autowired
-	private GameMessageSender gameMessageSender;
-
 	@CircuitBreaker(name = "boardServiceCB", fallbackMethod = "createGameFallback")
 	@Transactional
 	public GameDTO createGame() {
 		BoardDTO board = boardServiceClient.createBoard();
 		Game game = new Game();
-		game.setBoardId(board.getId());
+		game.setBoardId(board.id());
 		game = gameRepository.save(game);
-
-		GameDTO gameDTO = new GameDTO(game.getId(), game.getBoardId(), List.of());
-		return gameDTO;
+		return new GameDTO(game.getId(), game.getBoardId(), List.of());
 	}
 
 	private GameDTO createGameFallback(Exception ex) {
@@ -78,9 +70,7 @@ public class GameService {
 				.orElseThrow(() -> new RuntimeException("Game not found"));
 
 		String result = boardServiceClient.endGame(game.getBoardId());
-		game.setStatus(Game.GameStatus.FINISHED);
 		gameRepository.save(game);
-
 		return result;
 	}
 
@@ -97,35 +87,14 @@ public class GameService {
 
 		BoardDTO board = boardServiceClient.getBoard(game.getBoardId());
 
-		// Check if all cells with ships are hit
-		boolean allShipsHit = true;
-		for (CellDTO cell : board.getCells()) {
-			if (cell.isHasShip() && !cell.isHit()) {
-				allShipsHit = false;
-				break;
-			}
-		}
-
-		return allShipsHit;
+		return board.cells().stream()
+				.filter(CellDTO::hasShip)
+				.allMatch(CellDTO::isHit);
 	}
 
 	private boolean checkGameOverFallback(Long gameId, Exception ex) {
 		log.error("Failed to check game over for game {}", gameId, ex);
 		return false;
-	}
-
-	@CircuitBreaker(name = "gameServiceCB", fallbackMethod = "setWinnerFallback")
-	@Transactional
-	public void setWinner(Long gameId, Long playerId) {
-		Game game = gameRepository.findById(gameId)
-				.orElseThrow(() -> new RuntimeException("Game not found"));
-
-		game.setWinner(playerId);
-		gameRepository.save(game);
-	}
-
-	private void setWinnerFallback(Long gameId, Long playerId, Exception ex) {
-		log.error("Failed to set winner for game {}", gameId, ex);
 	}
 
 	@CircuitBreaker(name = "gameServiceCB", fallbackMethod = "getGameFallback")

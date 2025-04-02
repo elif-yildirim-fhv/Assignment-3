@@ -55,29 +55,18 @@ public class GameMessageReceiver {
 			case "SHIP_HIT":
 			case "SHOT_MISSED":
 				Long gameId = Long.valueOf(message.get("gameId").toString());
-				Long playerId = Long.valueOf(message.get("playerId").toString());
 				boolean isHit = "SHIP_HIT".equals(type);
 
-				// Update game state based on hit/miss
-				if (isHit) {
-					// Check if game is over (all ships hit)
-					boolean isGameOver = gameService.checkGameOver(gameId);
-					if (isGameOver) {
-						gameService.setWinner(gameId, playerId);
-						gameService.endGame(gameId);
-						gameMessageSender.sendGameWonEvent(gameId, playerId);
-						gameMessageSender.sendGameEndedEvent(gameId);
-					}
+				// Check if game is over (all ships hit)
+				if (isHit && gameService.checkGameOver(gameId)) {
+					gameService.endGame(gameId);
+					gameMessageSender.sendGameEndedEvent(gameId);
 				}
 				break;
 
 			case "GAME_OVER":
 				Long gameOverId = Long.valueOf(message.get("gameId").toString());
-				Long winningPlayerId = Long.valueOf(message.get("playerId").toString());
-
-				gameService.setWinner(gameOverId, winningPlayerId);
 				gameService.endGame(gameOverId);
-				gameMessageSender.sendGameWonEvent(gameOverId, winningPlayerId);
 				gameMessageSender.sendGameEndedEvent(gameOverId);
 				break;
 
